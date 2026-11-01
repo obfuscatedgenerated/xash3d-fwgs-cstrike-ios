@@ -98,6 +98,35 @@ jobs:
         key: sailfish-sdk-${{ env.SAILFISH_SDK_VERSION }}-${{ env.SAILFISH_TARGET_VERSION }}-${{ matrix.targetarch }}
     - name: Install dependencies
       run: bash scripts/gha/deps_${{ matrix.targetos }}.sh
+    - name: Fetch Counter-Strike iOS libraries
+      if: matrix.targetos == 'ios'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        CS16_CLIENT_REPO: obfuscatedgenerated/cs16-client-ios
+      run: |
+        set -e
+        run_id="$(gh run list --repo "$CS16_CLIENT_REPO" --workflow build.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+        test -n "$run_id"
+        mkdir -p build/ios/libs
+        artifact_dir="$(mktemp -d)"
+        gh run download "$run_id" --repo "$CS16_CLIENT_REPO" --name iOS-arm64 --dir "$artifact_dir"
+        package="$(find "$artifact_dir" -type f -name '*.zip' -print -quit)"
+        test -n "$package"
+        unzip -q "$package" \
+          'cstrike/cl_dlls/*.dylib' \
+          'cstrike/dlls/*.dylib' \
+          -d build/ios/libs
+        for pair in \
+          "cstrike/cl_dlls/client_arm64.dylib:cstrike/cl_dlls/client_ios_arm64.dylib" \
+          "cstrike/cl_dlls/menu_arm64.dylib:cstrike/cl_dlls/menu_ios_arm64.dylib" \
+          "cstrike/dlls/cs_arm64.dylib:cstrike/dlls/cs_ios_arm64.dylib"; do
+          old="${pair%%:*}"
+          new="${pair#*:}"
+          if [[ ! -e "build/ios/libs/$new" && -e "build/ios/libs/$old" ]]; then
+            mv "build/ios/libs/$old" "build/ios/libs/$new"
+          fi
+          test -f "build/ios/libs/$new"
+        done
     - name: Build engine
       env:
         FWGS_PFX_PASSWORD: ${{ secrets.FWGS_PFX_PASSWORD }}
