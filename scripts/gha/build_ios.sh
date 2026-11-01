@@ -4,7 +4,7 @@
 
 cd "$GITHUB_WORKSPACE" || die
 
-./waf configure --enable-lto --ios build install --destdir=build/ios || die_configure
+./waf configure --build-type=debug --ios build install --destdir=build/ios || die_configure
 
 cp -vr /Library/Frameworks/SDL2.framework ./build
 
@@ -18,3 +18,6 @@ popd || die
 
 mkdir -p artifacts/
 mv "build/xash3d.ipa" "artifacts/xash3d-fwgs-ios-arm64.ipa"
+if [ -d "build/ios/dSYMs" ]; then
+    ditto -c -k --sequesterRsrc --keepParent "build/ios/dSYMs" "artifacts/xash3d-fwgs-ios-arm64-dSYMs.zip" || die
+fi
