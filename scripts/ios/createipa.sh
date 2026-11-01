@@ -21,9 +21,17 @@ if [ -d "$BUILDDIR" ]; then
     cd ../../../../ || exit 1
 
     ./waf build install --destdir="$BUILDDIR/ios/xash3d.app"
-    #echo "Generating dSYMs"
-    #find "$BUILDDIR/ios/xash3d.app" -name "*.dylib" -type f -exec dsymutil {} \;
-    #dsymutil "$BUILDDIR/ios/xash3d.app/xash"
+    echo "Generating dSYMs"
+    DSYMDIR="$BUILDDIR/ios/dSYMs"
+    rm -rf "$DSYMDIR"
+    mkdir -p "$DSYMDIR"
+    find "$BUILDDIR/ios/xash3d.app" -type f \( -name "xash" -o -name "*.dylib" \) -print0 |
+        while IFS= read -r -d '' binary; do
+            if file "$binary" | grep -q "Mach-O"; then
+                name=$(basename "$binary")
+                dsymutil "$binary" -o "$DSYMDIR/$name.dSYM" || exit 1
+            fi
+        done || exit 1
 
     cd "$BUILDDIR" || exit 1
 
