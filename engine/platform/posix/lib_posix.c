@@ -317,6 +317,15 @@ void *COM_LoadLibrary( const char *dllname, int build_ordinals_table, qboolean d
 
 	if( !( hInst->hInstance = dlopen( hInst->fullPath, RTLD_NOW ) ) )
 	{
+#if XASH_IOS
+		char bundlePath[MAX_SYSPATH];
+		Q_snprintf( bundlePath, sizeof( bundlePath ), "%s/%s", IOS_GetExecDir(), hInst->shortPath );
+		hInst->hInstance = dlopen( bundlePath, RTLD_NOW );
+#endif
+	}
+
+	if( !hInst->hInstance )
+	{
 		COM_PushLibraryError( dlerror() );
 		Mem_Free( hInst );
 		return NULL;
